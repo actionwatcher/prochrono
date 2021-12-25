@@ -33,14 +33,14 @@ well as the UNO. Not all pins on the Mega and Leonardo can be used to receive se
 
 #include <SoftwareSerial.h>
 
-int reviewPin = 6; // Review Shot button, switched to ground
-int delshotPin = 7; // Delete shot button pin, switched to ground
-int delstringPin = 8; // Delete string button pin, switched to ground
-int nextstringPin = 9; // Next string button pin, switched to ground
-int redisplayPin = 10; // Redisplay button pin, switched to ground
-int rxpin = 11; // Incoming Data from ProChrono is recieved on this pin
+int reviewPin = 4; // Review Shot button, switched to ground
+int delshotPin = 5; // Delete shot button pin, switched to ground
+int delstringPin = 6; // Delete string button pin, switched to ground
+int nextstringPin = 10; // Next string button pin, switched to ground
+int redisplayPin = 9; // Redisplay button pin, switched to ground
+int rxpin = 11; // Incoming Data from ProChrono is recieved on this pin (tip)
 // NOTE: RX pin must be tied to ground with a 10K ohm resistor!
-int txpin = 12; // Data going out to ProChrono is transmitted on this pin
+int txpin = 12; // Data going out to ProChrono is transmitted on this pin (ring)
 int ledpin = 13; // Serial Indicator LED, completely optional
 int BadDataTimeout = 900; // Milliseconds after which data is assumed to be bad and Rx string is cleared
 long lastRxtime = 0; // Records the start of the last data recieve time as a timeout for bad data
@@ -60,7 +60,7 @@ String GoToFirstVelocity = ":00000008"; //Jumps to the most recent shot in the s
 String GoToFirstStatistic = ":00000009"; //Jumps to the "HI" statistic
 String RedisplayString = ":0000000E"; //Same as hitting the "Redisplay" button on ProChrono
 // The following are not yet implemented and/or used in this version of this code
-String GetVelocity = ":00000003"; // Not yet implemented
+String GetCurrentShotInfo = ":00000003"; // Not yet implemented returns first byte 04, second byte string, third byte shot
 String RequestVelocityData = ":0200000101"; // last byte is the string number to send data for
 SoftwareSerial ProChrono(rxpin, txpin); // RX, TX for ProChrono
 void setup() {
@@ -81,7 +81,7 @@ void setup() {
     digitalWrite(reviewPin, HIGH); // and set the pullup resistor on
 #ifdef SerialMonitor
 // Open serial communications with PC and wait for port to open:
-    Serial.begin(1200);
+    Serial.begin(9600);
     while (!Serial) { ; // wait for serial port to connect. Needed for Leonardo only
     }
     Serial.println("Arduino ProChrono Remote connected");
@@ -90,7 +90,8 @@ void setup() {
 }
 
 void loop() {
-    if (ProChrono.available()) {
+    auto cnt = ProChrono.available();
+    for(int i = 0; i < cnt; ++i) {
         digitalWrite(ledpin, HIGH);
         lastRxtime = millis(); // reset our incoming data timeout counter
         aChar = ProChrono.read(); // grab the character
