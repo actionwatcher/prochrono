@@ -34,9 +34,13 @@ well as the UNO. Not all pins on the Mega and Leonardo can be used to receive se
 //#define debugLED(l, level) digitalWrite(l, level)
 #define debugLED(l, level)
 
-
+#define HWSerial
+#ifndef HWSerial
 #include <SoftwareSerial.h>
+#endif
 
+void SendPacket(String PacketData);
+bool VerifyChecksum(String strCommand);
 int reviewPin = 4; // Review Shot button, switched to ground
 int delshotPin = 5; // Delete shot button pin, switched to ground
 int delstringPin = 6; // Delete string button pin, switched to ground
@@ -66,23 +70,51 @@ String RedisplayString = ":0000000E"; //Same as hitting the "Redisplay" button o
 // The following are not yet implemented and/or used in this version of this code
 String GetCurrentShotInfo = ":00000003"; // Not yet implemented returns first byte 04, second byte string, third byte shot
 String RequestVelocityData = ":0201000101"; // last byte is the string number to send data for
+#ifndef HWSerial
 SoftwareSerial ProChrono(rxpin, txpin); // RX, TX for ProChrono
+#else
+#define ProChrono Serial
+#endif
+
+bool
+    bNeedsStringChange = false,
+    bNeedsRedisplay = false,
+    bNeedsReview = false,
+    bNeedsDeleteShot = false,
+    bNeedsDeleteString = false;
+
+ISR (PCINT2_vect)
+{
+    if (digitalRead(reviewPin) == LOW) {
+        bNeedsReview = true;
+    } else if (digitalRead(delshotPin) == LOW) {
+        bNeedsDeleteShot = true;
+    } else if (digitalRead(delstringPin) == LOW) {
+        bNeedsDeleteString = true;
+    }
+}
+
+ISR (PCINT0_vect)
+{
+    if (digitalRead(nextstringPin) == LOW) {
+        bNeedsStringChange = true;
+    } else if (digitalRead(redisplayPin) == LOW) {
+        bNeedsRedisplay = true;
+    }
+}
+
+
 void setup() {
     pinMode(ledpin, OUTPUT); // set up the built in LED indicator (on the Uno)
     debugLED(ledpin, LOW); // turn off the LED
     pinMode(rxpin, INPUT); // the pin that receives data coming into the Arduino (must use 10k pulldown resistor!)
-    pinMode(txpin, OUTPUT); // the pin that sends data from the Arduino
+    pinMode(txpin, INPUT); // the pin that sends data from the Arduino
     digitalWrite(txpin, LOW);
-    pinMode(delshotPin, INPUT); // create a pin for the Delete Shot button
-    digitalWrite(delshotPin, HIGH); // and set the pullup resistor on
-    pinMode(delstringPin, INPUT); // create a pin for the Delete String button
-    digitalWrite(delstringPin, HIGH); // and set the pullup resistor on
-    pinMode(nextstringPin, INPUT); // create a pin for the Next String button
-    digitalWrite(nextstringPin, HIGH); // and set the pullup resistor on
-    pinMode(redisplayPin, INPUT); // create a pin for the Redisplay button
-    digitalWrite(redisplayPin, HIGH); // and set the pullup resistor on
-    pinMode(reviewPin, INPUT); // create a pin for the Review button
-    digitalWrite(reviewPin, HIGH); // and set the pullup resistor on
+    pinMode(delshotPin, INPUT_PULLUP); // create a pin for the Delete Shot button
+    pinMode(delstringPin, INPUT_PULLUP); // create a pin for the Delete String button
+    pinMode(nextstringPin, INPUT_PULLUP); // create a pin for the Next String button
+    pinMode(redisplayPin, INPUT_PULLUP); // create a pin for the Redisplay button
+    pinMode(reviewPin, INPUT_PULLUP); // create a pin for the Review button
 #ifdef SerialMonitor
 // Open serial communications with PC and wait for port to open:
     Serial.begin(9600);
@@ -92,7 +124,11 @@ void setup() {
 #endif
     ProChrono.begin(1200); // set the data rate for the ProChrono Serial port at 1200 baud
     sleep_enable();
-    set_sleep_mode(SLEEP_MODE_IDLE);
+    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+    PCMSK0 |= bit (PCINT2) | bit(PCINT1);  // want pin 9
+    PCMSK2 |= bit (PCINT22) | bit(PCINT21) | bit(PCINT20);
+    PCIFR  &= ~(bit (PCIF0) | bit (PCIF2));   // clear any outstanding interrupts
+    PCICR  |= bit (PCIE0) | bit (PCIE2);   // enable pin change interrupts for D8 to D13
 }
 
 void loop() {
@@ -126,52 +162,37 @@ void loop() {
         debugLED(ledpin, LOW);
     }
 // The functions below are called when buttons on the remote are pushed
-    if (digitalRead(nextstringPin) == LOW) { // We have a button press
-        delay(75); // wait for a fraction of a second so we don't repeat too fast
-        if (digitalRead(nextstringPin) == LOW) { // if button is still down then
-            SendPacket(NextString); // send the Next string command
-        }
+    if (bNeedsStringChange) { // We have a button press
+        SendPacket(NextString); // send the Next string command
+        delay(75); // debounce
+        bNeedsStringChange = false;
     }
-    if (digitalRead(redisplayPin) == LOW) { // We have a button press
-        delay(75); // wait for a fraction of a second so we don't repeat too fast
-        if (digitalRead(redisplayPin) == LOW) { // if button is still down then
-            SendPacket(RedisplayString); // send the Next string command
-        }
+    if (bNeedsRedisplay) { // We have a button press
+        SendPacket(RedisplayString); // send the Next string command
+        delay(75); // debounce
+        bNeedsRedisplay = false;
     }
-    if (digitalRead(delshotPin) == LOW) { // We have a button press
+    if (bNeedsDeleteShot) { // We have a button press
         delay(150); // wait for a bit so we don't repeat too fast
         if (digitalRead(delshotPin) == LOW) {
             SendPacket(DeleteShot);
         }
+        bNeedsDeleteShot = false;
     }
-    if (digitalRead(delstringPin) == LOW) { // We have a button press
+    if (bNeedsDeleteString) { // We have a button press
         delay(1000); // wait for one second; we don't want to accidentally delete a string!
         if (digitalRead(delstringPin) == LOW) { // if button is still down then
             SendPacket(DeleteString); // send Delete Shot command
         }
+        bNeedsDeleteString = false;
     }
-    if (digitalRead(reviewPin) == LOW) { // We have a button press
-        delay(75); // wait for a fraction of a second
-        if (digitalRead(reviewPin) == LOW) { // if button is still down then
-            SendPacket(ReviewString); // send Delete Shot command
-        }
+    if (bNeedsReview) { // We have a button press
+        SendPacket(ReviewString); // send Delete Shot command
+        delay(75); // debounce
+        bNeedsReview = false;
     }
     sleep_cpu();
 } // end loop
-void SendPacket(String PacketData) {
-    debugLED(ledpin, HIGH);
-    ProChrono.print(AppendChecksum(PacketData));
-#ifdef SerialMonitor
-    Serial.println("Sending " + AppendChecksum(PacketData));
-#endif
-    delay(400); // pause a bit in case button is held down
-    debugLED(ledpin, LOW);
-}
-
-String AppendChecksum(String strCommand) {
-// Appends the correct ProChrono checksum value to a given string
-    return strCommand + GetChecksumStr(strCommand);
-}
 
 String GetChecksumStr(String strCommand) {
 // calculates the checksum of a string and returns it as a 2 digit hex string.
@@ -184,6 +205,22 @@ String GetChecksumStr(String strCommand) {
     hexNumber.toUpperCase(); // ProChrono talks in all caps, so we must too
     return hexNumber;
 }
+
+String AppendChecksum(String strCommand) {
+// Appends the correct ProChrono checksum value to a given string
+    return strCommand + GetChecksumStr(strCommand);
+}
+
+void SendPacket(String PacketData) {
+    debugLED(ledpin, HIGH);
+    ProChrono.print(AppendChecksum(PacketData));
+#ifdef SerialMonitor
+    Serial.println("Sending " + AppendChecksum(PacketData));
+#endif
+    delay(400); // pause a bit in case button is held down
+    debugLED(ledpin, LOW);
+}
+
 
 bool VerifyChecksum(String strCommand) {
 // Returns TRUE if the given string contains a valid checksum, and FALSE if not
