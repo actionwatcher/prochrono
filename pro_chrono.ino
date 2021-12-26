@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <avr/sleep.h>
 
 /*
 Arduino Compatible Wired Remote Control for ProChrono Digital version 0.01
@@ -29,7 +30,10 @@ well as the UNO. Not all pins on the Mega and Leonardo can be used to receive se
 */
 // define SerialMonitor in order to send debug messages to the computer.
 // If using as a standalone remote, undefine this to save memory.
-#define SerialMonitor
+//#define SerialMonitor
+//#define debugLED(l, level) digitalWrite(l, level)
+#define debugLED(l, level)
+
 
 #include <SoftwareSerial.h>
 
@@ -61,11 +65,11 @@ String GoToFirstStatistic = ":00000009"; //Jumps to the "HI" statistic
 String RedisplayString = ":0000000E"; //Same as hitting the "Redisplay" button on ProChrono
 // The following are not yet implemented and/or used in this version of this code
 String GetCurrentShotInfo = ":00000003"; // Not yet implemented returns first byte 04, second byte string, third byte shot
-String RequestVelocityData = ":0200000101"; // last byte is the string number to send data for
+String RequestVelocityData = ":0201000101"; // last byte is the string number to send data for
 SoftwareSerial ProChrono(rxpin, txpin); // RX, TX for ProChrono
 void setup() {
     pinMode(ledpin, OUTPUT); // set up the built in LED indicator (on the Uno)
-    digitalWrite(ledpin, LOW); // turn off the LED
+    debugLED(ledpin, LOW); // turn off the LED
     pinMode(rxpin, INPUT); // the pin that receives data coming into the Arduino (must use 10k pulldown resistor!)
     pinMode(txpin, OUTPUT); // the pin that sends data from the Arduino
     digitalWrite(txpin, LOW);
@@ -87,12 +91,14 @@ void setup() {
     Serial.println("Arduino ProChrono Remote connected");
 #endif
     ProChrono.begin(1200); // set the data rate for the ProChrono Serial port at 1200 baud
+    sleep_enable();
+    set_sleep_mode(SLEEP_MODE_IDLE);
 }
 
 void loop() {
     auto cnt = ProChrono.available();
     for(int i = 0; i < cnt; ++i) {
-        digitalWrite(ledpin, HIGH);
+        debugLED(ledpin, HIGH);
         lastRxtime = millis(); // reset our incoming data timeout counter
         aChar = ProChrono.read(); // grab the character
         Serial.write(aChar); // display it in the monitor
@@ -102,7 +108,7 @@ void loop() {
             Serial.println();
             Serial.println(Incoming + " is a valid packet");
 #endif
-            digitalWrite(ledpin, LOW);
+            debugLED(ledpin, LOW);
 // This is where we would process the incoming data... to be coded in a future version.
             Incoming = ""; // clear our receive buffer string
             lastRxtime = 0; // zero out our timeout counter
@@ -117,7 +123,7 @@ void loop() {
 #endif
         Incoming = "";
         lastRxtime = 0;
-        digitalWrite(ledpin, LOW);
+        debugLED(ledpin, LOW);
     }
 // The functions below are called when buttons on the remote are pushed
     if (digitalRead(nextstringPin) == LOW) { // We have a button press
@@ -150,15 +156,16 @@ void loop() {
             SendPacket(ReviewString); // send Delete Shot command
         }
     }
+    sleep_cpu();
 } // end loop
 void SendPacket(String PacketData) {
-    digitalWrite(ledpin, HIGH);
+    debugLED(ledpin, HIGH);
     ProChrono.print(AppendChecksum(PacketData));
 #ifdef SerialMonitor
     Serial.println("Sending " + AppendChecksum(PacketData));
 #endif
     delay(400); // pause a bit in case button is held down
-    digitalWrite(ledpin, LOW);
+    debugLED(ledpin, LOW);
 }
 
 String AppendChecksum(String strCommand) {
