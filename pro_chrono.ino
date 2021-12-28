@@ -177,14 +177,16 @@ void loop() {
     }
     if (bNeedsDeleteShot) { // We have a button press
         delay(150); // wait for a bit so we don't repeat too fast
-        if (digitalRead(delshotPin) == LOW) {
+        unsigned  d = PIND;
+        if ((d & bit(delshotPin)) == 0) {
             SendPacket(DeleteShot);
         }
         bNeedsDeleteShot = false;
     }
     if (bNeedsDeleteString) { // We have a button press
         delay(1000); // wait for one second; we don't want to accidentally delete a string!
-        if (digitalRead(delstringPin) == LOW) { // if button is still down then
+        unsigned  d = PIND;
+       if ((d & bit(delstringPin)) == 0) {
             SendPacket(DeleteString); // send Delete Shot command
         }
         bNeedsDeleteString = false;
