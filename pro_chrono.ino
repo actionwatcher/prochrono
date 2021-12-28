@@ -85,20 +85,22 @@ bool
 
 ISR (PCINT2_vect)
 {
-    if (digitalRead(reviewPin) == LOW) {
+    unsigned  d = PIND;
+    if ((d & bit(reviewPin)) == 0) {
         bNeedsReview = true;
-    } else if (digitalRead(delshotPin) == LOW) {
+    } else if ((d & bit(delshotPin)) == 0) {
         bNeedsDeleteShot = true;
-    } else if (digitalRead(delstringPin) == LOW) {
+    } else if ((d & bit(delstringPin)) == 0) {
         bNeedsDeleteString = true;
     }
 }
 
 ISR (PCINT0_vect)
 {
-    if (digitalRead(nextstringPin) == LOW) {
+    unsigned d = PINB;
+    if ((d & bit(nextstringPin)) == 0) {
         bNeedsStringChange = true;
-    } else if (digitalRead(redisplayPin) == LOW) {
+    } else if ((d& bit(redisplayPin)) == 0) {
         bNeedsRedisplay = true;
     }
 }
@@ -132,6 +134,7 @@ void setup() {
 }
 
 void loop() {
+    sleep_cpu();
     auto cnt = ProChrono.available();
     for(int i = 0; i < cnt; ++i) {
         debugLED(ledpin, HIGH);
@@ -191,7 +194,6 @@ void loop() {
         delay(75); // debounce
         bNeedsReview = false;
     }
-    sleep_cpu();
 } // end loop
 
 String GetChecksumStr(String strCommand) {
