@@ -98,9 +98,9 @@ ISR (PCINT2_vect)
 ISR (PCINT0_vect)
 {
     unsigned d = PINB;
-    if ((d & bit(nextstringPin)) == 0) {
+    if ((d & bit(nextstringPin - 8)) == 0) {
         bNeedsStringChange = true;
-    } else if ((d& bit(redisplayPin)) == 0) {
+    } else if ((d & bit(redisplayPin - 8)) == 0) {
         bNeedsRedisplay = true;
     }
 }
@@ -127,14 +127,23 @@ void setup() {
     ProChrono.begin(1200); // set the data rate for the ProChrono Serial port at 1200 baud
     sleep_enable();
     set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    PCMSK0 |= bit (PCINT2) | bit(PCINT1);  // want pin 9
-    PCMSK2 |= bit (PCINT22) | bit(PCINT21) | bit(PCINT20);
+    *digitalPinToPCMSK(redisplayPin) |= bit(digitalPinToPCMSKbit(redisplayPin));
+    *digitalPinToPCICR(redisplayPin) |= bit(digitalPinToPCICRbit(redisplayPin));
+    *digitalPinToPCMSK(nextstringPin) |= bit(digitalPinToPCMSKbit(nextstringPin));
+    *digitalPinToPCICR(nextstringPin) |= bit(digitalPinToPCICRbit(nextstringPin));
+    *digitalPinToPCMSK(reviewPin) |= bit(digitalPinToPCMSKbit(reviewPin));
+    *digitalPinToPCICR(reviewPin) |= bit(digitalPinToPCICRbit(reviewPin));
+    *digitalPinToPCMSK(delshotPin) |= bit(digitalPinToPCMSKbit(delshotPin));
+    *digitalPinToPCICR(delshotPin) |= bit(digitalPinToPCICRbit(delshotPin));
+    *digitalPinToPCMSK(delstringPin) |= bit(digitalPinToPCMSKbit(delstringPin));
+    *digitalPinToPCICR(delstringPin) |= bit(digitalPinToPCICRbit(delstringPin));
     PCIFR  &= ~(bit (PCIF0) | bit (PCIF2));   // clear any outstanding interrupts
-    PCICR  |= bit (PCIE0) | bit (PCIE2);   // enable pin change interrupts for D8 to D13
 }
 
 void loop() {
+    digitalWrite(ledpin, LOW);
     sleep_cpu();
+    digitalWrite(ledpin, HIGH);
     auto cnt = ProChrono.available();
     for(int i = 0; i < cnt; ++i) {
         debugLED(ledpin, HIGH);
