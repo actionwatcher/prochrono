@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <avr/sleep.h>
+#include <avr/power.h>
 
 /*
 Arduino Compatible Wired Remote Control for ProChrono Digital version 0.01
@@ -138,12 +139,16 @@ void setup() {
     *digitalPinToPCMSK(delstringPin) |= bit(digitalPinToPCMSKbit(delstringPin));
     *digitalPinToPCICR(delstringPin) |= bit(digitalPinToPCICRbit(delstringPin));
     PCIFR  &= ~(bit (PCIF0) | bit (PCIF2));   // clear any outstanding interrupts
+    ADCSRA = 0;
+
+    // turn off everything we can
+    power_adc_disable ();
+    power_spi_disable();
+    power_twi_disable();
 }
 
 void loop() {
-    digitalWrite(ledpin, LOW);
     sleep_cpu();
-    digitalWrite(ledpin, HIGH);
     auto cnt = ProChrono.available();
     for(int i = 0; i < cnt; ++i) {
         debugLED(ledpin, HIGH);
