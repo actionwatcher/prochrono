@@ -8,6 +8,7 @@ It is based on Douglas Good's original code, but has been modified to work with 
 The Remote will run for about 2-3 weeks on a 2 AA battery pack. No need to turn it off.
 Also the code is a bit smaller.
 
+Note about licensing: The original code was published withouth a license (or at least I was not able to locate one).
 
 Arduino Compatible Wired Remote Control was originally designed by Douglas Good, November 2013.
 The exert below is from his original code:
