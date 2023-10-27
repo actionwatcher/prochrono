@@ -1,0 +1,21 @@
+From https://forums.brianenos.com/topic/84461-diy-serial-cable-for-the-prochorno/
+
+Get Stats: :000000027E
+Get shot: :000000037D
+Review: :000000047C
+Strg Chg: :000000057B
+Del Shot: :000000067A
+Del String: :0000000779
+Redisp: :0000000878
+Get Vel: :000001017E
+They seem to be in the form <CMD NUM>7<CMD NUM> where the first number increments and the last number decrements.
+I'll have to do some math to see if the Get Velocities command fits in this pattern. I'm too tired tonight.
+I also wonder what the hypothetical first command (:000000017F) does. Hopefully, it's not the self destruct sequence.
+
+: Starting char
+xx String Number
+xx Shot Number
+xx Command
+xx LRC of above byte excluding the ':'
+Each command is returned by either an ACK message, the data requested, or a Nack message.
+The data requested can be returned in several different formats depending on the command sent.
