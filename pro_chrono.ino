@@ -3,8 +3,14 @@
 #include <avr/power.h>
 
 /*
-Arduino Compatible Wired Remote Control for ProChrono Digital version 0.01
-Designed and Programmed by Douglas Good, November 2013.
+ProChrono Remote Control for Arduino is a program designed to allow an Arduino to control a Competition Electronics ProChrono chronograph.
+It is based on Douglas Good's original code, but has been modified to work with the Arduino Pro Mini and to be more battery efficient. 
+The Remote will run for about 2-3 weeks on a 2 AA battery pack. No need to turn it off.
+Also the code is a bit smaller.
+
+
+Arduino Compatible Wired Remote Control was originally designed by Douglas Good, November 2013.
+The exert below is from his original code:
 WORKING SO FAR:
 - String Change Command
 - Delete String Command
@@ -29,9 +35,8 @@ Note:
 Pin 11 was chosen for RX as it should be compatible with the Mega and Leonardo as
 well as the UNO. Not all pins on the Mega and Leonardo can be used to receive serial data.
 */
-// define SerialMonitor in order to send debug messages to the computer.
-// If using as a standalone remote, undefine this to save memory.
-//#define SerialMonitor
+
+
 //#define debugLED(l, level) digitalWrite(l, level)
 #define debugLED(l, level)
 
@@ -86,7 +91,7 @@ bool
 
 ISR (PCINT2_vect)
 {
-    unsigned  d = PIND;
+    unsigned  d = PIND; // read port D
     if ((d & bit(reviewPin)) == 0) {
         bNeedsReview = true;
     } else if ((d & bit(delshotPin)) == 0) {
@@ -98,7 +103,7 @@ ISR (PCINT2_vect)
 
 ISR (PCINT0_vect)
 {
-    unsigned d = PINB;
+    unsigned d = PINB; // read port B
     if ((d & bit(nextstringPin - 8)) == 0) {
         bNeedsStringChange = true;
     } else if ((d & bit(redisplayPin - 8)) == 0) {
